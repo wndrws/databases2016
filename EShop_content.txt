@@ -1,0 +1,128 @@
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'Asus');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'MSI');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'Intel');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'AMD');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'Samsung');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'Seagate');
+INSERT INTO manufacturers VALUES
+(NEXT VALUE FOR Seq_manID, 'Logitech');
+
+INSERT INTO storages VALUES
+(NEXT VALUE FOR Seq_stoID, 'СПб, ул. Пушкина, 7б');
+INSERT INTO storages VALUES
+(NEXT VALUE FOR Seq_stoID, 'СПб, Дунайский пр., 7к1');
+
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'NVidia GeForce GTX 960', 14500.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'NVidia GeForce GTX 960', 12760.00, (SELECT ID FROM manufacturers WHERE Name = 'MSI'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'NVidia GeForce GTX 970', 18000.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'NVidia GeForce GTX 980', 24400.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Core i5-6400', 14153.50, (SELECT ID FROM manufacturers WHERE Name = 'Intel'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Core i7-6700K', 22165.00, (SELECT ID FROM manufacturers WHERE Name = 'Intel'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'HD Pro Webcam C920', 8221.00, (SELECT ID FROM manufacturers WHERE Name = 'Logitech'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Webcam C170', 1279.90, (SELECT ID FROM manufacturers WHERE Name = 'Logitech'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, '850 EVO 120Gb MZ-75E120BW', 5000.00, (SELECT ID FROM manufacturers WHERE Name = 'Samsung'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, '850 EVO 250Gb MZ-75E250BW', 7550.00, (SELECT ID FROM manufacturers WHERE Name = 'Samsung'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, '850 EVO 250Gb MZ-N5E250BW', 7920.00, (SELECT ID FROM manufacturers WHERE Name = 'Samsung'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'STDR2000200', 5340.00, (SELECT ID FROM manufacturers WHERE Name = 'Seagate'));
+
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '25.09.2016', 1, 1, 20);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '25.09.2016', 3, 1, 10);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '25.09.2016', 4, 1, 5);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '26.09.2016', 2, 2, 30);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '26.09.2016', 5, 1, 25);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '26.09.2016', 5, 2, 20);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '29.09.2016', 8, 1, 50);
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '30.09.2016', 8, 1, 50);
+
+/*
+SET TERM ^;
+CREATE TRIGGER UPD_AVAIL_A AFTER INSERT ON arrivals AS
+BEGIN
+	Увеличить количество товара NEW.article на складе
+	NEW.sto_ID на NEW.Quantity, если в таблице availability
+	есть кортеж соответствущими значениями в столбцах
+	article и sto_ID. Иначе создать недостающие кортежи?
+END^
+
+CREATE TRIGGER UPD_AVAIL_O AFTER UPDATE ON orders AS
+BEGIN
+	Если статус заказа равен 2 (READY), то уменьшить
+	количество каждого товара из заказа на любом складе
+	на количество, указанное в заказе.
+END^
+
+CREATE TRIGGER UPD_AVAIL_O AFTER UPDATE ON orders AS
+BEGIN
+	Если статус заказа равен 4 (CANCELLED), то увеличить
+	количество каждого товара из заказа на любом складе
+	на количество, указанное в заказе.
+END^
+
+CREATE TRIGGER ADD_AVAIL AFTER INSERT ON goods AS
+BEGIN
+	Добавить в availability новый товар в количестве 0 шт.
+END^
+
+CREATE TRIGGER DEL_AVAIL AFTER DELETE ON goods AS
+BEGIN
+	Удалить из availability удаленный из goods товар. 
+END^
+SET TERM ;^
+*/
+
+INSERT INTO orders VALUES
+(NEXT VALUE FOR Seq_OrderNo, '30.09.2016', '+79119786196', 3);
+
+INSERT INTO orders_distribution VALUES
+(1, 1, 1, 12999.00); -- Купил GTX 960 по акции!
+
+INSERT INTO reviews	VALUES
+(NEXT VALUE FOR Seq_revID, 4, '29.09.2016 04:01:31', 5, 'Хорошая видеокарта! Покупать я её, конечно же, не буду.');
+INSERT INTO reviews	VALUES
+(NEXT VALUE FOR Seq_revID, 1, '03.10.2016 17:23:45', 4, 'Хорошая видеокарта по привлекательной цене, только дроссели свистят.');
+
+INSERT INTO categories_arrangement VALUES (9, 'Накопители');
+INSERT INTO categories_arrangement VALUES (10, 'Накопители');
+INSERT INTO categories_arrangement VALUES (11, 'Накопители');
+INSERT INTO categories_arrangement VALUES (12, 'Накопители');
+INSERT INTO categories_arrangement VALUES (9, 'SSD');
+INSERT INTO categories_arrangement VALUES (10, 'SSD');
+INSERT INTO categories_arrangement VALUES (11, 'SSD');
+INSERT INTO categories_arrangement VALUES (12, 'HDD');
+
+INSERT INTO cat_storage VALUES (9, 120, 'SATA');
+INSERT INTO cat_storage VALUES (10, 250, 'SATA');
+INSERT INTO cat_storage VALUES (11, 250, 'M.2');
+INSERT INTO cat_storage VALUES (12, 2000, 'USB 3.0');
+
+INSERT INTO cat_hdd VALUES (12, 7200);
+
+INSERT INTO cat_ssd VALUES (9, NULL, 88000);
+INSERT INTO cat_ssd VALUES (10, NULL, 88000);
+INSERT INTO cat_ssd VALUES (11, NULL, 89000);

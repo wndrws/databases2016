@@ -1,0 +1,109 @@
+--<status> ::= CREATED(0) | CONFIRMED(1) | READY(2) | COMPLETED(3) | CANCELLED(4)
+
+CREATE DOMAIN D_status AS smallint DEFAULT 0 CHECK (VALUE IS NULL OR VALUE IN (0, 1, 2, 3, 4));
+CREATE DOMAIN D_rating AS smallint DEFAULT NULL CHECK (VALUE IN (1, 2, 3, 4, 5));
+CREATE DOMAIN D_money AS numeric(9,2) DEFAULT NULL CHECK (VALUE >= 0);
+
+CREATE GENERATOR Seq_Article;
+CREATE GENERATOR Seq_OrderNo;
+CREATE GENERATOR Seq_arrID;
+CREATE GENERATOR Seq_manID;
+CREATE GENERATOR Seq_revID;
+CREATE GENERATOR Seq_stoID;
+
+CREATE TABLE MANUFACTURERS ( 
+	ID                   integer        NOT NULL PRIMARY KEY,
+	Name                 varchar(64)    NOT NULL UNIQUE
+);
+ 
+CREATE TABLE STORAGES ( 
+	ID                   integer        NOT NULL PRIMARY KEY,
+	Address              varchar(256)   NOT NULL
+);
+ 
+CREATE TABLE ORDERS ( 
+	Order_No             integer        NOT NULL PRIMARY KEY,
+	Order_Date           date           NOT NULL,
+	Phone                varchar(32)    NOT NULL,
+	--Fixed_cost           D_money        NOT NULL,
+	Status               D_status       NOT NULL
+);
+
+CREATE INDEX Idx_ORDERS_date ON ORDERS ( Order_Date );
+CREATE INDEX Idx_ORDERS_phone ON ORDERS ( Phone );
+CREATE INDEX Idx_ORDERS_status ON ORDERS ( Status );
+
+CREATE TABLE GOODS ( 
+	Article              integer        NOT NULL PRIMARY KEY,
+	Name                 varchar(256)   NOT NULL,
+	Price                D_money        ,
+	man_ID               integer        NOT NULL REFERENCES MANUFACTURERS(ID)
+);
+
+CREATE INDEX Idx_GOODS_Price ON GOODS ( Price );
+
+CREATE TABLE ARRIVALS ( 
+	ID                   integer        NOT NULL PRIMARY KEY,
+	Arr_Date             date           NOT NULL,
+	article              integer        NOT NULL REFERENCES GOODS(Article),
+	sto_ID               integer        NOT NULL REFERENCES STORAGES(ID),
+	Quantity             integer        NOT NULL CHECK(Quantity > 0)
+);
+
+CREATE INDEX Idx_ARRIVALS_date ON ARRIVALS ( Arr_Date );
+CREATE INDEX Idx_ARRIVALS_article ON ARRIVALS ( article );
+CREATE INDEX Idx_ARRIVALS_sto_ID ON ARRIVALS ( sto_ID );
+
+CREATE TABLE AVAILABILITY ( 
+	sto_ID               integer        NOT NULL REFERENCES STORAGES(ID),
+	article              integer        NOT NULL REFERENCES GOODS(Article),
+	Quantity             integer        NOT NULL CHECK(Quantity >= 0),
+	CONSTRAINT pk_AVAILABILITY PRIMARY KEY ( sto_ID, article )
+);
+
+CREATE TABLE ORDERS_DISTRIBUTION ( 
+	order_No             integer        NOT NULL REFERENCES ORDERS(Order_No),
+	article              integer        NOT NULL REFERENCES GOODS(Article),
+	Quantity             integer        NOT NULL CHECK(Quantity > 0),
+	Fixed_price          D_money        ,
+	CONSTRAINT pk_ORDERS_DISTRIBUTION PRIMARY KEY ( order_No, article )
+);
+ 
+CREATE TABLE REVIEWS ( 
+	ID                   bigint         NOT NULL PRIMARY KEY,
+	article              integer        NOT NULL REFERENCES GOODS(Article),
+	DateTime             timestamp      NOT NULL,
+	Rating               D_rating       ,
+	Text                 varchar(2000)
+);
+
+CREATE INDEX Idx_REVIEWS_articleWdatetime ON REVIEWS ( article, DateTime );
+CREATE INDEX Idx_REVIEWS_articleWrating ON REVIEWS ( article, Rating );
+
+CREATE TABLE CATEGORIES_ARRANGEMENT ( 
+	article              integer        NOT NULL REFERENCES GOODS(Article),
+	Category             varchar(64)    NOT NULL,
+	CONSTRAINT pk_CATEGORIES_ARRANGEMENT PRIMARY KEY ( article, Category )
+);
+
+CREATE TABLE CAT_STORAGE ( 
+	article              integer        NOT NULL PRIMARY KEY REFERENCES GOODS(Article),
+	Capacity             integer        NOT NULL CHECK(Capacity > 0),
+	Interface            varchar(64)    NOT NULL
+	--CONSTRAINT pk_CAT_Storage PRIMARY KEY ( article )
+);
+
+CREATE TABLE CAT_HDD ( 
+	article              integer        NOT NULL PRIMARY KEY REFERENCES GOODS(Article),
+	RPM                  integer        NOT NULL CHECK(RPM > 0)
+	--CONSTRAINT pk_CAT_HDD PRIMARY KEY ( article )
+);
+ 
+CREATE TABLE CAT_SSD ( 
+	article              integer        NOT NULL PRIMARY KEY REFERENCES GOODS(Article),
+	"IOPS(R)"            integer        ,
+	"IOPS(W)"            integer        
+	--CONSTRAINT pk_CAT_SSD PRIMARY KEY ( article )
+);
+
+COMMIT;
