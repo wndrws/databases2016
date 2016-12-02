@@ -1,0 +1,72 @@
+SET TERM ^;
+
+CREATE TRIGGER ADD_AVAIL AFTER INSERT ON goods AS
+    DECLARE VARIABLE storageID INTEGER;
+BEGIN
+	/* Добавить в availability новый товар в количестве 0 шт на все склады. */
+    FOR SELECT ID FROM storages INTO :storageID
+    DO
+        INSERT INTO availability VALUES (:storageID, NEW.article, 0);
+END^
+
+CREATE TRIGGER UPD_AVAIL_ARRIVED AFTER INSERT ON arrivals AS
+BEGIN
+    /* Увеличить количество товара NEW.article на складе NEW.sto_ID на NEW.Quantity */
+    UPDATE availability
+        SET Quantity = Quantity + NEW.Quantity
+        WHERE article = NEW.article AND sto_ID = NEW.sto_ID;
+END^
+
+CREATE TRIGGER DEL_AVAIL AFTER DELETE ON goods AS
+BEGIN
+	/* Удалить из availability удаленный из goods товар. */
+    DELETE FROM availability WHERE article = OLD.article;
+END^
+
+CREATE TRIGGER UPD_AVAIL_SOLD AFTER UPDATE ON orders AS
+    DECLARE VARIABLE goodArticle  INTEGER;
+    DECLARE VARIABLE goodQuantity INTEGER;
+BEGIN
+	/* Если статус заказа равен 2 (READY), то уменьшить
+	количество каждого товара из заказа на любом складе
+	на количество, указанное в заказе. */
+    IF (NEW.Status = 2) THEN
+        FOR SELECT article, Quantity FROM ORDERS_DISTRIBUTION
+        WHERE order_No = NEW.Order_No
+        INTO :goodArticle, :goodQuantity
+        DO
+            UPDATE availability
+                SET Quantity = Quantity - :goodQuantity
+                WHERE article = :goodArticle
+                ROWS 1;
+END^
+
+CREATE TRIGGER UPD_AVAIL_RETURNED AFTER UPDATE ON orders AS
+    DECLARE VARIABLE goodArticle  INTEGER;
+    DECLARE VARIABLE goodQuantity INTEGER;
+BEGIN
+	/* Если статус заказа равен 4 (CANCELLED), а прежний статус был
+    3 (COMPLETED) или 2 (READY), то увеличить количество каждого товара
+    из заказа на любом складе на количество, указанное в заказе. */
+    IF (NEW.Status = 2 AND (OLD.Status = 3 OR OLD.Status = 2)) THEN
+        FOR SELECT article, Quantity FROM ORDERS_DISTRIBUTION
+        WHERE order_No = NEW.Order_No
+        INTO :goodArticle, :goodQuantity
+        DO
+            UPDATE availability
+                SET Quantity = Quantity + :goodQuantity
+                WHERE article = :goodArticle
+                ROWS 1;
+END^
+
+CREATE TRIGGER ADD_AVAIL_NEWSTORE AFTER INSERT ON storages AS
+    DECLARE VARIABLE currArticle INTEGER;
+BEGIN
+    FOR SELECT Article FROM goods INTO :currArticle
+    DO
+        INSERT INTO availability VALUES (NEW.ID, :currArticle, 0);
+END^
+
+SET TERM ;^
+
+COMMIT;

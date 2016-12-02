@@ -1,0 +1,156 @@
+CREATE VIEW all_arrivals AS     SELECT * FROM arrivals;
+CREATE VIEW all_cat AS          SELECT * FROM categories;
+CREATE VIEW all_cat_arr AS      SELECT * FROM cat_arrangement;
+CREATE VIEW all_man AS          SELECT * FROM manufacturers;
+CREATE VIEW all_od AS           SELECT * FROM orders_distribution;
+CREATE VIEW all_specs AS        SELECT * FROM specifications;
+CREATE VIEW all_storages AS     SELECT * FROM storages;
+CREATE VIEW all_avail AS        SELECT * FROM availability;
+CREATE VIEW all_csd AS          SELECT * FROM catspec_distribution;
+CREATE VIEW all_goods AS        SELECT * FROM goods;
+CREATE VIEW all_orders AS       SELECT * FROM orders;
+CREATE VIEW all_reviews AS      SELECT * FROM reviews;
+CREATE VIEW all_specarr AS      SELECT * FROM spec_arrangement;
+
+CREATE VIEW goodsGTX AS
+    SELECT * FROM goods WHERE Name LIKE '%GTX%';
+CREATE VIEW mans56 AS
+    SELECT * FROM goods WHERE man_ID IN (5, 6);
+CREATE VIEW price1020k AS
+    SELECT * FROM goods WHERE Price BETWEEN 10000.00 AND 20000.00;
+
+CREATE VIEW totalAsusCost AS
+SELECT SUM(Price * Quantity) AS "Total cost of goods by ASUS"
+FROM goods AS g NATURAL JOIN availability JOIN manufacturers AS m ON
+m.ID = g.man_ID WHERE m.ID = (SELECT ID from manufacturers WHERE Name LIKE 'Asus');
+
+CREATE VIEW sortGoodsExample AS
+SELECT * FROM goods ORDER BY man_ID ASC, Name ASC;
+
+CREATE VIEW avgsumExample AS
+SELECT AVG(Quantity) AS "Average quantity in arrival", 
+SUM(Quantity) AS "Total items arrived" FROM arrivals;
+
+-- Вывести все категории с их характеристиками
+CREATE VIEW catspecHumanReadable AS
+SELECT c.Name AS "Category", s.Name AS "Specification"
+FROM categories c JOIN catspec_distribution csd ON c.ID = csd.catID
+    JOIN specifications s ON csd.specID = s.ID;
+-- Вывести названия товаров вместе с названиями их производителей
+CREATE VIEW manGoods AS
+SELECT m.Name AS "Manufacturer", g.Name AS "Item"
+FROM goods g JOIN manufacturers m ON g.man_ID = m.ID;
+
+-- Вывести количество товаров, поставляемых каждым производителем
+CREATE VIEW manItemsCount AS
+SELECT m.Name AS "Manufacturer", COUNT(*) AS "Items count"
+FROM goods g JOIN manufacturers m ON g.man_ID = m.ID GROUP BY m.Name;
+/* Вывести количество товаров от каждого производителя, поставляющего
+   больше одного наименования */
+CREATE VIEW manItemsCountMore1 AS
+SELECT m.Name AS "Manufacturer", COUNT(*) AS "Items count"
+FROM goods g JOIN manufacturers m ON g.man_ID = m.ID GROUP BY m.Name
+HAVING COUNT(*) > 1;
+
+-- Узнать, что купил клиент с номером телефона +79119786196
+CREATE VIEW boughtByPhone AS
+SELECT Name FROM goods WHERE Article = (
+    SELECT article FROM orders NATURAL JOIN orders_distribution 
+    WHERE Phone LIKE '%9119786196'
+);
+/*
+SET TRANSACTION;
+
+INSERT INTO manufacturers
+VALUES (NEXT VALUE FOR Seq_manID, 'Thermaltake');
+INSERT INTO storages
+VALUES (NEXT VALUE FOR Seq_stoID, 'Москва, ул. Строителей, д. 25');
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Core V1', 3500.00, (SELECT ID FROM manufacturers WHERE Name = 'Thermaltake'));
+INSERT INTO arrivals VALUES
+(NEXT VALUE FOR Seq_arrID, '01.12.2016', 13, 3, 32);
+INSERT INTO orders VALUES
+(NEXT VALUE FOR Seq_OrderNo, '01.12.2016', '+79119786196', 0);
+INSERT INTO orders_distribution VALUES
+(2, 13, 1, 3500.00);
+INSERT INTO reviews VALUES
+(NEXT VALUE FOR Seq_revID, 8, '11.11.2016 14:00:19', 1, 'Плохая вебка.');
+INSERT INTO categories VALUES
+(NEXT VALUE FOR Seq_catID, 'Корпуса');
+INSERT INTO specifications VALUES
+(NEXT VALUE FOR Seq_specID, 'Число слотов PCI');
+INSERT INTO catspec_distribution VALUES (4, 6);
+INSERT INTO cat_arrangement VALUES (13, 4);
+INSERT INTO spec_arrangement VALUES (13, 6, '2');
+
+SAVEPOINT sp_1;
+
+UPDATE goods SET Price = 0.8*Price, Name = Name || ' (Sale! -20%)'
+WHERE man_ID = (SELECT ID FROM manufacturers WHERE Name = 'Intel');
+
+SAVEPOINT sp_2;
+
+DELETE FROM reviews ORDER BY Rating ASC ROWS 1;
+
+SAVEPOINT sp_3;
+
+DELETE FROM manufacturers m WHERE NOT EXISTS
+(SELECT man_ID FROM goods g WHERE m.ID = g.man_ID);
+*/
+---------------------- Хранимые Процедуры: ----------------------
+SET TERM ^;
+CREATE PROCEDURE insertEverywhere AS
+    DECLARE VARIABLE newManID INTEGER;
+    DECLARE VARIABLE newArticle INTEGER;
+    DECLARE VARIABLE newStoID INTEGER;
+    DECLARE VARIABLE newOrderNo INTEGER;
+    DECLARE VARIABLE newCatID INTEGER;
+    DECLARE VARIABLE newSpecID INTEGER;
+BEGIN
+    INSERT INTO manufacturers VALUES 
+        (NEXT VALUE FOR Seq_manID, 'Thermaltake')
+        RETURNING ID INTO :newManID;
+    INSERT INTO storages VALUES 
+        (NEXT VALUE FOR Seq_stoID, 'Москва, ул. Строителей, д. 25')
+        RETURNING ID INTO :newStoID;
+    INSERT INTO goods VALUES
+        (NEXT VALUE FOR Seq_Article, 'Core V1', 3500.00, :newManID)
+        RETURNING Article INTO :newArticle;
+    INSERT INTO arrivals VALUES
+        (NEXT VALUE FOR Seq_arrID, '01.12.2016', :newArticle, :newStoID, 32);
+    INSERT INTO orders VALUES
+        (NEXT VALUE FOR Seq_OrderNo, '01.12.2016', '+79119786196', 0)
+        RETURNING Order_No INTO :newOrderNo;
+    INSERT INTO orders_distribution VALUES
+        (:newOrderNo, :newArticle, 1, 3500.00);
+    INSERT INTO reviews VALUES
+        (NEXT VALUE FOR Seq_revID, (SELECT Article FROM goods WHERE Name = 'Webcam C170'),
+        '11.11.2016 14:00:19', 1, 'Плохая вебка.');
+    INSERT INTO categories VALUES
+        (NEXT VALUE FOR Seq_catID, 'Корпуса')
+        RETURNING ID INTO :newCatID;
+    INSERT INTO specifications VALUES
+        (NEXT VALUE FOR Seq_specID, 'Число слотов PCI')
+        RETURNING ID INTO :newSpecID;
+    INSERT INTO catspec_distribution VALUES (:newCatID, :newSpecID);
+    INSERT INTO cat_arrangement VALUES (:newArticle, :newCatID);
+    INSERT INTO spec_arrangement VALUES (:newArticle, :newSpecID, '2');
+END^
+
+CREATE PROCEDURE startIntelSale AS
+BEGIN
+    UPDATE goods SET Price = 0.8*Price, Name = Name || ' (Sale! -20%)'
+    WHERE man_ID = (SELECT ID FROM manufacturers WHERE Name = 'Intel');
+END^
+
+CREATE PROCEDURE deleteWorstReview AS
+BEGIN
+    DELETE FROM reviews ORDER BY Rating ASC ROWS 1;
+END^
+
+CREATE PROCEDURE deleteMansWithoutGoods AS
+BEGIN
+    DELETE FROM manufacturers m WHERE NOT EXISTS
+    (SELECT man_ID FROM goods g WHERE m.ID = g.man_ID);
+END^
+SET TERM ;^
