@@ -30,7 +30,7 @@ BEGIN
 	/* Если статус заказа равен 2 (READY), то уменьшить
 	количество каждого товара из заказа на любом складе
 	на количество, указанное в заказе. */
-    IF (NEW.Status = 2) THEN
+    IF (OLD.Status = 1 AND NEW.Status = 2) THEN
         FOR SELECT article, Quantity FROM ORDERS_DISTRIBUTION
         WHERE order_No = NEW.Order_No
         INTO :goodArticle, :goodQuantity
