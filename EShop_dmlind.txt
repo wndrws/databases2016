@@ -1,0 +1,92 @@
+﻿-- Дополнительные данные для иллюстрации дальнейших запросов
+
+INSERT INTO categories VALUES
+(NEXT VALUE FOR Seq_catID, 'Видеокарты');
+INSERT INTO cat_arrangement VALUES (1, 4);
+INSERT INTO cat_arrangement VALUES (2, 4);
+INSERT INTO cat_arrangement VALUES (3, 4);
+INSERT INTO cat_arrangement VALUES (4, 4);
+
+INSERT INTO categories VALUES
+(NEXT VALUE FOR Seq_catID, 'Ноутбуки');
+INSERT INTO categories VALUES
+(NEXT VALUE FOR Seq_catID, 'Материнские платы');
+INSERT INTO categories VALUES
+(NEXT VALUE FOR Seq_catID, 'Мониторы');
+
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Transformer Book Trio TX201LA', 31990.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Zenbook UX303UA', 46036.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'K501UX', 50000.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'XPS 13 9360', 86440.00, (SELECT ID FROM manufacturers WHERE Name = 'Dell'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'VX279Q', 21500.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'VC239H', 11365.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+INSERT INTO goods VALUES
+(NEXT VALUE FOR Seq_Article, 'Z170 Pro Gaming', 13700.00, (SELECT ID FROM manufacturers WHERE Name = 'Asus'));
+
+INSERT INTO cat_arrangement VALUES (13, 5);
+INSERT INTO cat_arrangement VALUES (14, 5);
+INSERT INTO cat_arrangement VALUES (15, 5);
+INSERT INTO cat_arrangement VALUES (16, 5);
+INSERT INTO cat_arrangement VALUES (17, 7);
+INSERT INTO cat_arrangement VALUES (18, 7);
+INSERT INTO cat_arrangement VALUES (19, 6);
+
+-- data for ORDERS and ORDERS_DISTRIBUTION generated through IBExpert
+
+ALTER TABLE orders ADD Fixed_cost D_money DEFAULT 0 NOT NULL;
+
+SET TERM ^;
+CREATE PROCEDURE fillFP AS
+    DECLARE VARIABLE ordNo INTEGER;
+    DECLARE VARIABLE quan INTEGER;
+    DECLARE VARIABLE cost D_money;
+BEGIN
+    FOR SELECT Order_No, SUM(Fixed_price*Quantity) FROM orders_distribution
+    GROUP BY Order_No
+    INTO :ordNo, :cost
+    DO
+	UPDATE orders SET Fixed_cost = :cost
+	WHERE Order_No = :ordNo;
+END^
+SET TERM ;^
+
+COMMIT;
+
+/* Для заданного производителя вывести суммарные продажи (в деньгах)
+   за заданный промежуток времени по каждой категории. */
+
+SELECT c.Name AS "Категория", SUM(od.Quantity * od.Fixed_price) AS "Продажи Asus"
+FROM orders_distribution od NATURAL JOIN goods g
+JOIN manufacturers m ON g.man_ID = m.ID
+JOIN cat_arrangement ca ON ca.article = g.Article
+JOIN categories c ON ca.catID = c.ID
+WHERE od.order_No IN
+    (SELECT Order_No FROM orders WHERE Order_Date BETWEEN '01.01.2016' AND '20.11.2016'
+    AND Status = 3)
+AND m.Name = 'Asus'
+GROUP BY c.Name;
+
+/* Вывести 5 заказов с максимальной суммарной стоимостью,
+   в которых содержатся позиции из разных категорий. */
+
+SELECT * FROM orders
+WHERE Order_No IN 
+    (SELECT od.order_No FROM orders_distribution od NATURAL JOIN cat_arrangement ca
+    GROUP BY od.order_No HAVING COUNT(ca.catID) > 1)
+ORDER BY Fixed_cost DESC ROWS 5;
+
+/* Вывести товары, которые соответствуют набору заданных значений характеристик. */
+
+SELECT * FROM goods WHERE Article IN
+(SELECT Article FROM goods NATURAL JOIN spec_arrangement sa JOIN specifications s ON s.ID = sa.specID
+WHERE (s.Name LIKE '%CAPACITY%' AND Spec_value LIKE '250%'))
+AND Article IN
+(SELECT Article FROM goods NATURAL JOIN spec_arrangement sa JOIN specifications s ON s.ID = sa.specID
+WHERE (s.Name LIKE '%IOPS%' AND Spec_value LIKE '89000'));
+
